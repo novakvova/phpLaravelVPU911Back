@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 
 class AuthController extends Controller
@@ -20,6 +21,55 @@ class AuthController extends Controller
     }
 
     /**
+     * @OA\Post(
+     ** path="/api/auth/login",
+     *   tags={"Auth"},
+     *   summary="Login",
+     *   operationId="login",
+     *
+     *   @OA\Parameter(
+     *      name="email",
+     *      in="query",
+     *      required=true,
+     *      @OA\Schema(
+     *           type="string"
+     *      )
+     *   ),
+     *   @OA\Parameter(
+     *      name="password",
+     *      in="query",
+     *      required=true,
+     *      @OA\Schema(
+     *          type="string"
+     *      )
+     *   ),
+     *   @OA\Response(
+     *      response=200,
+     *       description="Success",
+     *      @OA\MediaType(
+     *           mediaType="application/json",
+     *      )
+     *   ),
+     *   @OA\Response(
+     *      response=401,
+     *       description="Unauthenticated"
+     *   ),
+     *   @OA\Response(
+     *      response=400,
+     *      description="Bad Request"
+     *   ),
+     *   @OA\Response(
+     *      response=404,
+     *      description="not found"
+     *   ),
+     *      @OA\Response(
+     *          response=403,
+     *          description="Forbidden"
+     *      )
+     *)
+     **/
+
+    /**
      * Get a JWT via given credentials.
      *
      * @return \Illuminate\Http\JsonResponse
@@ -31,11 +81,12 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json($validator->errors(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+
         if (! $token = auth()->attempt($validator->validated())) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return response()->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
 
         return $this->createNewToken($token);
@@ -46,7 +97,7 @@ class AuthController extends Controller
     /**
      * @OA\Post(
      ** path="/api/auth/register",
-     *   tags={"Register"},
+     *   tags={"Auth"},
      *   summary="Register",
      *   operationId="register",
      *
@@ -108,7 +159,6 @@ class AuthController extends Controller
      *)
      **/
 
-
     /**
      * Register a User.
      *
@@ -122,7 +172,7 @@ class AuthController extends Controller
         ]);
 
         if($validator->fails()){
-            return response()->json($validator->errors()->toJson(), 400);
+            return response()->json($validator->errors()->toJson(), Response::HTTP_BAD_REQUEST);
         }
 
         $user = User::create(array_merge(
@@ -133,10 +183,18 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'User successfully registered',
             'user' => $user
-        ], 201);
+        ], Response::HTTP_CREATED);
     }
 
 
+    /**
+     * @OA\Post(
+     *     path="/api/auth/logout",
+     *     tags={"Auth"},
+     *     security={{"apiAuth":{}}},
+     *     @OA\Response(response="200", description="Display a listing of projects.")
+     * )
+     */
     /**
      * Log the user out (Invalidate the token).
      *
@@ -145,32 +203,43 @@ class AuthController extends Controller
     public function logout() {
         auth()->logout();
 
-        return response()->json(['message' => 'User successfully signed out']);
+        return response()->json(['message' => 'User successfully signed out'], Response::HTTP_OK);
     }
 
+
+    /**
+     * @OA\Post(
+     *     path="/api/auth/refresh",
+     *     tags={"Auth"},
+     *     security={{"apiAuth":{}}},
+     *     @OA\Response(response="200", description="Display a listing of projects.")
+     * )
+     */
     /**
      * Refresh a token.
      *
      * @return \Illuminate\Http\JsonResponse
      */
     public function refresh() {
-        return $this->createNewToken(auth()->refresh());
+        return $this->createNewToken(auth()->refresh(), Response::HTTP_OK);
     }
 
+
+    /**
+     * @OA\Get(
+     *     path="/api/auth/user-profile",
+     *     tags={"Auth"},
+     *     security={{"apiAuth":{}}},
+     *     @OA\Response(response="200", description="Display a listing of projects.")
+     * )
+     */
     /**
      * Get the authenticated User.
      *
      * @return \Illuminate\Http\Response
      */
-    /**
-     * @OA\Get(
-     *     path="/api/auth/user-profile",
-     *     @OA\Response(response="200", description="Display a listing of projects.")
-     * )
-     */
-
     public function userProfile() {
-        return response()->json(auth()->user());
+        return response()->json(auth()->user(), Response::HTTP_OK);
     }
 
     /**
@@ -186,7 +255,7 @@ class AuthController extends Controller
             'token_type' => 'bearer',
             'expires_in' => auth()->factory()->getTTL() * 60,
             'user' => auth()->user()
-        ]);
+        ], Response::HTTP_OK);
     }
 
 }
