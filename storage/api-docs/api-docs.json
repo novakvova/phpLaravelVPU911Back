@@ -18,6 +18,14 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
